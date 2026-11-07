@@ -1,0 +1,21 @@
+experiment,stage,stage_english,class,images,plants
+full_image,정식기,Transplanting,잎끝마름,504,18
+full_image,정식기,Transplanting,황화,349,13
+full_image,출뢰기,Flower bud,잎끝마름,441,28
+full_image,출뢰기,Flower bud,황화,316,16
+full_image,개화기,Flowering,잎끝마름,110,14
+full_image,개화기,Flowering,황화,85,10
+full_image,과실비대기,Fruit enlargement,잎끝마름,392,27
+full_image,과실비대기,Fruit enlargement,황화,433,22
+full_image,수확기,Harvest,잎끝마름,542,28
+full_image,수확기,Harvest,황화,331,19
+leaf_crop,정식기,Transplanting,잎끝마름,372,18
+leaf_crop,정식기,Transplanting,황화,274,13
+leaf_crop,출뢰기,Flower bud,잎끝마름,272,28
+leaf_crop,출뢰기,Flower bud,황화,212,16
+leaf_crop,개화기,Flowering,잎끝마름,29,12
+leaf_crop,개화기,Flowering,황화,31,8
+leaf_crop,과실비대기,Fruit enlargement,잎끝마름,132,24
+leaf_crop,과실비대기,Fruit enlargement,황화,163,19
+leaf_crop,수확기,Harvest,잎끝마름,259,28
+leaf_crop,수확기,Harvest,황화,158,17

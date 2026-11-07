@@ -1,0 +1,28 @@
+{
+  "source_notebook": "ablation_test (1).ipynb",
+  "source_sha256": "ae83cb8be9bdc4083ddaa94cfbdb7f00a87f4703ac0ca7824cd28734c27e60be",
+  "checked_date": "2026-11-07",
+  "python_version": "3.13.9",
+  "package_versions": {
+    "numpy": "2.3.5",
+    "pandas": "2.3.3",
+    "matplotlib": "3.10.6",
+    "scikit-learn": "1.7.2",
+    "Pillow": "12.0.0",
+    "torch": "2.14.1",
+    "torchvision": "0.29.1",
+    "timm": "1.0.31"
+  },
+  "statistical_results_max_abs_difference": 0.0,
+  "feature_extraction_rerun": false,
+  "cross_validation_and_bootstrap_rerun": true,
+  "statistical_cells_unchanged_from_previous_attachment": true,
+  "latest_plotting_helpers_executed": true,
+  "stage_chart_pixels_match_original": true,
+  "figures_sha256": {
+    "full_image_ablation.png": "cba91b5f749ba34bf4774fe0946f0ddb1de2fe4d0bf6f70756ddb58a3c50bb91",
+    "leaf_crop_by_input.png": "2f21fc772f9d2c619c6d0a4f6463f70a94e5d289549cfb040b55d45f199a982c",
+    "leaf_crop_by_stage.png": "2435d44cda6257e073fc8a83b82152b6a33c5727318f3f8a43a4e4a278fc6062",
+    "leaf_crop_examples.png": "af615e45c7c91aceb9377e0fea092d003507c8bd3ebe08c60ebd5d2d5a3095ba"
+  }
+}
