@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+data/
+outputs/
+ablation_out/
+ablation_out_leafcrop/
+feature_cache/
+*.npy
+*.npz
+_qa/

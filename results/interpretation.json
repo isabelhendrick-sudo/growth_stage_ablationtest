@@ -1,0 +1,47 @@
+{
+  "source_report": "Growth_stage_for_Strawberry_Nutrient_Deficiency.docx",
+  "alignment_date": "2026-11-11",
+  "model_rerun": false,
+  "runs": [
+    {
+      "run": "full_image",
+      "baseline_macro_f1": 0.5558747782103228,
+      "baseline_ci_lo": 0.4769475750745475,
+      "baseline_ci_hi": 0.6234030422653309,
+      "baseline_ci_level": 0.95,
+      "baseline_lower_bound_threshold": 0.6,
+      "baseline_gate_applies": false,
+      "baseline_above_threshold": false,
+      "gate_chronology": "Added after run 1, before run 2; not prespecified for run 1.",
+      "minimum_meaningful_delta": 0.01,
+      "stage_comparison_status": "interpreted",
+      "verdicts": [
+        "INCONCLUSIVE (interval spans competing conclusions)",
+        "INCONCLUSIVE (interval spans competing conclusions)",
+        "INCONCLUSIVE (interval spans competing conclusions)",
+        "INCONCLUSIVE (interval spans competing conclusions)"
+      ],
+      "decision": "INCONCLUSIVE: no basis for keeping or dropping stage conditioning. Run 1 is descriptive; the baseline gate was added afterwards."
+    },
+    {
+      "run": "leaf_crop",
+      "baseline_macro_f1": 0.5691358300227648,
+      "baseline_ci_lo": 0.5225120416510319,
+      "baseline_ci_hi": 0.6086435042731559,
+      "baseline_ci_level": 0.95,
+      "baseline_lower_bound_threshold": 0.6,
+      "baseline_gate_applies": true,
+      "baseline_above_threshold": false,
+      "gate_chronology": "Added after run 1, before run 2; not prespecified for run 1.",
+      "minimum_meaningful_delta": 0.01,
+      "stage_comparison_status": "not_interpreted",
+      "decision": "NOT INTERPRETED: the image-only lower 95% CI bound (0.523) does not exceed 0.60. Report stage comparisons for completeness only; do not keep or drop stage conditioning.",
+      "verdicts": [
+        "NOT INTERPRETED (baseline gate failed)",
+        "NOT INTERPRETED (baseline gate failed)",
+        "NOT INTERPRETED (baseline gate failed)",
+        "NOT INTERPRETED (baseline gate failed)"
+      ]
+    }
+  ]
+}

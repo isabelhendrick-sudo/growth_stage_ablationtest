@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from interpretation import MIN_DELTA, interpret_results
 
 
 def arguments():
@@ -74,6 +75,28 @@ def extract_features(data, mode, output_dir, feature_dir, loader):
     return features
 
 
+def write_input_audit(data, run_name, output_dir):
+    """Counts are a reproduction check, not proof of source-split identity."""
+    expected = {
+        "full_image": {"images": 3503, "plants": 55, "tipburn": 1989, "yellowing": 1514},
+        "leaf_crop": {"images": 1902, "plants": 55, "tipburn": 1064, "yellowing": 838},
+    }[run_name]
+    observed = {
+        "images": len(data), "plants": int(data.group.nunique()),
+        "tipburn": int(data.label.eq("잎끝마름").sum()),
+        "yellowing": int(data.label.eq("황화").sum()),
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    audit = {"run": run_name, "farm": "AI22_003",
+             "source_split_required": "validation", "source_split_verified": False,
+             "expected": expected, "observed": observed,
+             "report_counts_match": observed == expected}
+    (output_dir / "input_audit.json").write_text(
+        json.dumps(audit, indent=2) + "\n", encoding="utf-8")
+    if observed != expected:
+        print("WARNING: input counts differ from the report:", audit, flush=True)
+
+
 def run(args):
     # Source notebook cell 1
     import os, json, unicodedata
@@ -91,7 +114,7 @@ def run(args):
 
     CLASSES = ("잎끝마름", "황화")
     STAGE_ORDER = ["정식기", "생육기", "출뢰기", "개화기", "과실비대기", "수확기"]
-    MIN_DELTA = 0.01  # smallest macro-F1 gain worth keeping stage for - decide now, before seeing results
+    # MIN_DELTA was set before run 1; the baseline gate applies only to run 2.
 
     plt.rcParams["font.family"] = args.font  # Korean text in plots on Windows
     plt.rcParams["axes.unicode_minus"] = False
@@ -139,11 +162,13 @@ def run(args):
                  if fn.lower().endswith((".jpg", ".jpeg", ".png"))}
     df["image_path"] = df.fname.map(lambda f: img_paths.get(nfc(f).lower()))
 
-    data = df[df.label.isin(CLASSES) & (df.stage != "") & df.image_path.notna()].reset_index(drop=True)
+    data = df[df.farm.eq("AI22_003") & df.label.isin(CLASSES) & (df.stage != "") & df.image_path.notna()].reset_index(drop=True)
     if data.empty:
         raise ValueError("No matching labelled images.")
     if data.group.eq("_").any() or (data.farm.eq("") | data.plant.eq("")).any():
         raise ValueError("Plant and farm IDs are required for grouped validation.")
+    if data.groupby("group").label.nunique().gt(1).any():
+        raise ValueError("Each plant must have one treatment-group label.")
     if data.fname.duplicated().any():
         raise ValueError("Duplicate labelled filenames; resolve duplicates before analysis.")
     stages = [s for s in STAGE_ORDER if s in set(data.stage)]
@@ -153,6 +178,8 @@ def run(args):
     data.groupby(["stage", "label"]).group.nunique().unstack().reindex(stages)  # plants per stage x class
     if not set(data.stage).issubset(stages):
         raise ValueError("Unrecognised growth stage.")
+
+    write_input_audit(data, "full_image", OUT)
 
     # Source notebook cell 5
     from PIL import Image, ImageFile
@@ -272,13 +299,12 @@ def run(args):
         rows.append((f"{a} vs {b_}", macro_f1(y, pred[a]) - macro_f1(y, pred[b_]), lo, hi, verdict(lo, hi)))
     deltas = pd.DataFrame(rows, columns=["comparison", "delta", "ci_lo", "ci_hi", "verdict"])
 
-    main, shuf = deltas.iloc[:2], deltas.iloc[2:]
-    if ((main.ci_lo.values > 0) & (shuf.ci_lo.values > 0)).any():
-        decision = "Positive gain and shuffle evidence under the original rule; check MIN_DELTA separately."
-    elif (main.ci_hi <= MIN_DELTA).all():
-        decision = f"DROP stage conditioning: confidently no gain larger than {MIN_DELTA} macro-F1."
-    else:
-        decision = "INCONCLUSIVE: intervals allow benefit and harm; more independent evidence is needed."
+    summary = interpret_results(overall.to_dict("records"), deltas.to_dict("records"), "full_image")
+    deltas["verdict"] = summary["verdicts"]
+    deltas["ci_level"] = [level for _, _, level in comparisons]
+    deltas["interpretation"] = summary["stage_comparison_status"]
+    decision = summary["decision"]
+    (OUT / "interpretation.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
 
     overall.to_csv(OUT / "overall.csv", index=False)
     deltas.to_csv(OUT / "deltas.csv", index=False, encoding="utf-8-sig")
@@ -336,7 +362,7 @@ def run(args):
     ax2.set_yticks(yy, stages)
     ax2.invert_yaxis()
     ax2.set_xlabel("macro-F1 change vs no_stage (95% CI)")
-    ax2.set_title("Where does stage help?")
+    ax2.set_title("Stage-specific differences (exploratory)")
     ax2.legend(fontsize=8)
 
     fig.tight_layout()
@@ -350,7 +376,9 @@ def run(args):
             stage_rows.append({"arm": a, "stage": stage,
                                "delta": macro_f1(y[mask], pred[a][mask]) - macro_f1(y[mask], pred["no_stage"][mask]),
                                "ci_lo": lo, "ci_hi": hi})
-    pd.DataFrame(stage_rows).to_csv(OUT / "stage_deltas.csv", index=False)
+    stage_table = pd.DataFrame(stage_rows)
+    stage_table["interpretation"] = summary["stage_comparison_status"]
+    stage_table.to_csv(OUT / "stage_deltas.csv", index=False)
 
 
     # Source notebook cell 11
@@ -372,7 +400,7 @@ def run(args):
 
     base = pd.read_csv((OUTPUT_ROOT / "full_image") / "data.csv")  # the original 3,503-image table
     leaf = base.merge(meta, on="fname", how="left")
-    leaf = leaf[(leaf.part == "잎") & leaf.bbox.notna() & (leaf.W > 0)].reset_index(drop=True)
+    leaf = leaf[(leaf.part == "잎") & leaf.bbox.notna() & (leaf.W > 0) & (leaf.H > 0)].reset_index(drop=True)
     leaf_stages = [s for s in STAGE_ORDER if s in set(leaf.stage)]
 
     print(f"{len(leaf):,} leaf images")
@@ -380,6 +408,7 @@ def run(args):
     leaf.groupby(["stage", "label"]).group.nunique().unstack().reindex(leaf_stages)
     if leaf.empty:
         raise ValueError("No matched leaf annotations.")
+    write_input_audit(leaf, "leaf_crop", OUTPUT_ROOT / "leaf_crop")
 
     # Source notebook cell 12
     #check the crops look okay 
@@ -526,13 +555,12 @@ def run(args):
         rows.append((f"{a} vs {b_}", macro_f1(y, pred[a]) - macro_f1(y, pred[b_]), lo, hi, verdict(lo, hi)))
     deltas = pd.DataFrame(rows, columns=["comparison", "delta", "ci_lo", "ci_hi", "verdict"])
 
-    main, shuf = deltas.iloc[:2], deltas.iloc[2:]
-    if ((main.ci_lo.values > 0) & (shuf.ci_lo.values > 0)).any():
-        decision = "Positive gain and shuffle evidence under the original rule; check MIN_DELTA separately."
-    elif (main.ci_hi <= MIN_DELTA).all():
-        decision = f"DROP stage conditioning: confidently no gain larger than {MIN_DELTA} macro-F1."
-    else:
-        decision = "INCONCLUSIVE: intervals allow benefit and harm; more independent evidence is needed."
+    summary = interpret_results(overall.to_dict("records"), deltas.to_dict("records"), "leaf_crop")
+    deltas["verdict"] = summary["verdicts"]
+    deltas["ci_level"] = [level for _, _, level in comparisons]
+    deltas["interpretation"] = summary["stage_comparison_status"]
+    decision = summary["decision"]
+    (OUT / "interpretation.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
 
     overall.to_csv(OUT / "overall.csv", index=False)
     deltas.to_csv(OUT / "deltas.csv", index=False, encoding="utf-8-sig")
@@ -541,13 +569,19 @@ def run(args):
     print("DECISION:", decision)
     (OUT / "decision.txt").write_text(decision + "\n", encoding="utf-8")
 
+    from sklearn.metrics import confusion_matrix
+    cm = confusion_matrix(y, pred["no_stage"], labels=[0, 1])
+    cm_table = pd.DataFrame(cm, index=CLASSES, columns=["predicted_tipburn", "predicted_yellowing"])
+    cm_table["recall"] = cm.diagonal() / cm.sum(axis=1)
+    cm_table.to_csv(OUT / "confusion_matrix.csv", index_label="true_class")
+
     # Source notebook cell 18
     # Readable names for the figures
     ARM_NAMES = {"stage_only": "Stage only", "no_stage": "Image only (no stage)",
                  "stage_additive": "Image + stage", "stage_interaction": "Image \u00d7 stage",
                  "stage_additive_shuffled": "Image + shuffled stage",
                  "stage_interaction_shuffled": "Image \u00d7 shuffled stage"}
-    STAGE_NAMES = {"정식기": "Transplanting", "생육기": "Vegetative", "출뢰기": "Flower bud",
+    STAGE_NAMES = {"정식기": "Transplanting", "생육기": "Vegetative", "출뢰기": "Flower-bud emergence",
                    "개화기": "Flowering", "과실비대기": "Fruit enlargement", "수확기": "Harvest"}
 
     # Plain matplotlib look: framed panels, ticks pointing inwards
@@ -614,15 +648,18 @@ def run(args):
             stage_rows.append({"arm": a, "stage": stage,
                                "delta": macro_f1(y[mask], pred[a][mask]) - macro_f1(y[mask], pred["no_stage"][mask]),
                                "ci_lo": lo, "ci_hi": hi})
-    pd.DataFrame(stage_rows).to_csv(OUT / "stage_deltas.csv", index=False)
+    stage_table = pd.DataFrame(stage_rows)
+    stage_table["interpretation"] = summary["stage_comparison_status"]
+    stage_table.to_csv(OUT / "stage_deltas.csv", index=False)
 
 
     # Source notebook cell 19
-    plot_by_input(overall, "Macro-F1 by model input | leaf crops", OUT / "ablation_by_input.png")
-    plot_by_stage(boot_stage, "Effect of adding growth stage on macro-F1 | leaf crops", OUT / "ablation_by_stage.png")
+    plot_status = "not interpreted" if summary["stage_comparison_status"] == "not_interpreted" else "baseline gate passed"
+    plot_by_input(overall, f"Run 2: leaf crops | {plot_status}", OUT / "ablation_by_input.png")
+    plot_by_stage(boot_stage, f"Run 2: stage differences | {plot_status}", OUT / "ablation_by_stage.png")
     b = overall.set_index("arm").loc["no_stage"]
     print(f"Leaf-crop no-stage macro-F1: {b.macro_f1:.3f} (95% CI {b.ci_lo:.3f}-{b.ci_hi:.3f})")
-    print("The notebook's 0.60 baseline screen is not a chance test. Interpret paired intervals and dataset limitations.")
+    print(summary["decision"])
 
 if __name__ == "__main__":
     run(arguments())

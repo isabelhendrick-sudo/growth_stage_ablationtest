@@ -24,5 +24,15 @@
     "leaf_crop_by_input.png": "2f21fc772f9d2c619c6d0a4f6463f70a94e5d289549cfb040b55d45f199a982c",
     "leaf_crop_by_stage.png": "2435d44cda6257e073fc8a83b82152b6a33c5727318f3f8a43a4e4a278fc6062",
     "leaf_crop_examples.png": "af615e45c7c91aceb9377e0fea092d003507c8bd3ebe08c60ebd5d2d5a3095ba"
+  },
+  "report_alignment": {
+    "date": "2026-11-11",
+    "report": "Growth_stage_for_Strawberry_Nutrient_Deficiency.docx",
+    "base_commit": "36140b6edea305cd9d8b0d979c880b175e24dda1",
+    "numeric_results_changed": false,
+    "feature_extraction_rerun": false,
+    "full_data_cross_validation_and_bootstrap_rerun": false,
+    "notebook_outputs_cleared": true,
+    "historical_verification_note": "Top-level verification fields describe the inherited 2026-11-07 record, not this revision."
   }
 }

@@ -1,103 +1,100 @@
-# Methods and interpretation
+# Methods and interpretation rules
 
-## Research question
+This document follows **Growth stage for Strawberry Nutrient Deficiency**, supplied on 11 November 2026. The source report determines the research question, two-run chronology and interpretation. Existing full-precision exports supply the numerical results.
 
-Does known growth stage improve prediction of the dataset's tipburn/yellowing class label beyond a fixed image-feature representation? The study evaluates new plants from the same available farm. It does not estimate disease causation, diagnose individual visible lesions, or establish performance at a new farm.
+## Question and scope
 
-## Inputs and inclusion
+Does known growth stage improve prediction of tip burn versus yellowing treatment-group labels beyond a fixed image representation? The test concerns held-out plants from one available farm, not external farms, lesion diagnosis or tissue-confirmed nutrient deficiency.
 
-The notebook reads `images.growth_stage`, `disease_class`, `farm_id`, `crops_id` and `fname` from JSON labels. It normalises `출뢰` to `출뢰기`, matches images by normalised filename, and keeps the two requested labels with non-empty stage and a matching image. This yields 3,503 images from 3,540 labels read. The group key is `farm_id + '_' + crops_id`.
+The two proposed contributions are **prevalence shift** (additive stage information) and **expression shift** (stage–image interactions). Both classes occur at all five observed stages.
 
-The selected sample has 55 groups from one farm: 33 tipburn groups and 22 yellowing groups. No plant group has both class labels in the working table. Five stages are present:
+## Dataset
 
-| Korean value | English description |
+The report's full-release audit contains 172,037 labelled images from 12 farms and five classes. Tip burn and yellowing occur only at AI22_003; blight and wilt occur on three other farms without healthy plants. This confounding motivates restricting the ablation to the two nutrient-treatment labels at AI22_003.
+
+Both runs use the source **validation split only**, approximately 6 GB. It includes all 55 plants from that farm: 33 tip burn and 22 yellowing. Adding training-split images would not introduce new plants.
+
+The code reads `images.growth_stage`, `disease_class`, `farm_id`, `crops_id` and `fname`. It normalises `출뢰` to `출뢰기`, matches normalised image filenames, filters to AI22_003 and the two labels, and excludes empty stages or missing images. Report counts: 3,540 labels read; 37 excluded; 3,503 usable whole images (1,989 tip burn, 1,514 yellowing).
+
+| Stage | English |
 | --- | --- |
 | 정식기 | Transplanting |
-| 출뢰기 | Budding |
+| 출뢰기 | Flower-bud emergence |
 | 개화기 | Flowering |
 | 과실비대기 | Fruit enlargement |
 | 수확기 | Harvest |
 
-`생육기` is listed in the code's stage order but is not present in the selected sample.
+The ordering also recognises `생육기` (vegetative growth), which is absent from this sample. The five observed dataset stages are not the seven Darlan classes; the report gives only approximate correspondences to Darlan and BBCH categories.
 
-The crop experiment retains images whose first category is `잎` (leaf), with a first-annotation bounding box and usable dimensions. It uses the first annotation/category only. A square crop is centred on the box with side length **1.5 times** its longest dimension. Image orientation and scale are adjusted using the supplied dimensions. Crops extending outside the image can contain padding. The preview montage contains the first four leaf examples per class, not a random or representative diagnostic sample.
+Run 2 retains images whose first category is `잎` (leaf), with a first-annotation box and positive image dimensions: 1,902 images (1,064 tip burn, 838 yellowing), still all 55 plants. The square crop is centred on that box and has side length 1.5 times the longer box dimension. The report's 50% margin is implemented as `pad=0.5`, not 50% on every side. Orientation and scale are adjusted using supplied dimensions; out-of-frame crop regions may be padded.
 
-## Features and model arms
+## Feature extraction and ablation arms
 
-The frozen `convnext_tiny.fb_in22k` network produces 768 features per image. Its [official model card](https://huggingface.co/timm/convnext_tiny.fb_in22k) identifies ImageNet-22k pretraining and documents classifier-free embedding extraction. The experiment does not fine-tune the backbone.
+Frozen `convnext_tiny.fb_in22k` features have 768 dimensions. No backbone fine-tuning is performed. In each training fold, fit standardisation → 64-component PCA → standardisation, then apply those fitted objects to held-out plants.
 
-Within each training fold, the pipeline fits a standard scaler, 64-component PCA and a second standard scaler. Test images are transformed using those fitted training-fold objects. Let `Z` be the resulting 64 image features and `S` the five-dimensional one-hot stage vector:
+Let Z contain the 64 image features and S the five one-hot stage indicators:
 
-| Arm | Classifier inputs | Dimensions |
+| Arm | Design matrix | Dimensions |
 | --- | --- | ---: |
-| `stage_only` | `S` | 5 |
-| `no_stage` | `Z` | 64 |
-| `stage_additive` | `[Z, S]` | 69 |
-| `stage_interaction` | `[Z, S, Z*S_1, …, Z*S_5]` | 389 |
+| Stage only | S | 5 |
+| Image only | Z | 64 |
+| Image + stage | Z, S | 69 |
+| Image × stage | Z, S, Z×S1, …, Z×S5 | 389 |
 
-All arms use logistic regression with `C=0.5`, balanced class weights and `max_iter=5000`. This fixed regularisation setting is not separately tuned for the different input dimensions. Conclusions therefore concern these particular representations and classifier settings, not every possible use of stage information.
+All classifiers use logistic regression with C=0.5, balanced class weights and max_iter=5000. Hyperparameters are fixed across arms; input dimensionality differs. Everything runs on CPU.
 
-## Held-out predictions
+Shuffled controls evaluate the fitted additive and interaction models after shuffling stage rows within the test fold. They do not retrain models and do not shuffle target labels. The same shuffled assignment is used for both stage arms in a fold. This diagnostic does not preserve individual plants' stage trajectories.
 
-The analysis uses five repeats of five-fold `StratifiedGroupKFold`, with repeat seeds 0–4. Groups are plants, so images from a plant cannot be in both training and test sets in the same fold. The splitter attempts class balance while preserving group separation, as described in the [scikit-learn documentation](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html).
+## Plant-grouped validation
 
-Each image receives one held-out probability per repeat. The five probabilities are averaged and thresholded at 0.5. Reported F1 is computed from these final predictions; it is not the arithmetic average of 25 fold-level F1 scores.
+The grouping key is farm ID + plant ID. Five-fold StratifiedGroupKFold is repeated five times with seeds 0–4. A plant cannot appear in training and test within the same fold. Preprocessing is fitted only on training rows.
 
-The two shuffled evaluations use each trained stage model with stage rows randomly permuted within its test fold. The same shuffled stage assignment is used for the additive and interaction arms in that fold. Training data and fitted classifiers are unchanged. This is an input-perturbation diagnostic, not a label-permutation test of prediction above chance. It does not preserve stage trajectories within plants.
+Each image receives one out-of-fold probability per repeat. Average those five probabilities, then threshold at 0.5. Reported macro-F1 is calculated from the resulting predictions, not averaged across 25 fold scores.
 
-## Metric and uncertainty
+## Bootstrap and intervals
 
-Macro-F1 is the unweighted mean of the two class-specific F1 scores ([metric documentation](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html)). The notebook's custom function omits a class when that class is absent from the true labels of a resample; this can affect rare stage-specific bootstrap samples and is preserved in the script for reproduction.
+Draw 55 plant IDs with replacement, include all their images, and repeat 2,000 times (seed 0). Each draw is shared by the arms so differences are paired. Predictions stay fixed; models are not refitted.
 
-The bootstrap draws 55 plant IDs with replacement, includes all images for each selected plant, and repeats this 2,000 times with seed 0. Each draw is shared across arms, making differences paired. Models are not retrained in bootstrap resamples. Intervals therefore describe variation from resampling observed plant groups conditional on the existing held-out predictions; they do not capture the full uncertainty of model fitting, data collection or new farms.
+Scores remain image-level macro-F1. Cluster resampling does not make each plant contribute equally: plants with more photos contribute more observations. The original custom metric omits a true class absent from a resample; this behaviour remains for numerical continuity and can matter in sparse stage subsets.
 
-Scores remain image-level macro-F1. Plant resampling respects within-plant clustering, but does not make each plant contribute equally to the pooled score. Plants with more images contribute more observations.
-
-| Result | Nominal interval level |
+| Quantity | Interval |
 | --- | --- |
-| Overall macro-F1 by arm | 95% |
-| Additive vs no-stage; interaction vs no-stage | 97.5% each, for two main comparisons within an experiment |
-| Correct stage vs shuffled stage | 95% |
-| Within-stage differences | 95%, exploratory and unadjusted |
+| Overall macro-F1 | 95% |
+| Each stage arm versus image only | 97.5% |
+| Correct versus shuffled stage | 95% |
+| Stage-specific differences | 95%, exploratory |
 
-The main intervals use the notebook's `1 - 0.05 / 2 = 0.975` setting, a Bonferroni-style adjustment for two comparisons within each experiment. It is not an adjustment across both experiments and all stage-specific/shuffle comparisons.
+The two main comparisons use 1 − 0.05/2 = 0.975 intervals, a Bonferroni adjustment within each run. This does not adjust across both runs or all subgroup/shuffle comparisons.
 
-## Practical margin and decision statements
+## Decision rules and chronology
 
-The notebook sets `MIN_DELTA = 0.01` macro-F1 as a practical-difference margin. Its presence in the code does not establish formal preregistration. The distinction is:
+1. **Set before run 1:** practical gain threshold Δ macro-F1 = 0.01.
+2. **Added after run 1, before run 2:** interpret stage comparisons only when the image-only baseline's **lower 95% CI bound >0.60**.
 
-- A lower difference bound above 0 supports a positive effect under this interval procedure.
-- A lower bound above +0.01 supports an effect exceeding the chosen practical margin.
-- An interval fully inside −0.01 to +0.01 supports the notebook's practical-equivalence interpretation.
-- An interval spanning meaningful benefit and harm is inconclusive.
+The report says each rule was fixed before the run to which it applies. This is not a claim of external preregistration.
 
-All four main intervals span zero and extend beyond both sides of the practical band. Neither benefit nor equivalence is established.
+**The baseline gate takes precedence.** Run 2 has lower bound 0.522512…; stage comparisons and stage-specific contrasts remain available as numbers but carry `not_interpreted` status. They must not drive a keep/drop decision. Run 1 is described as inconclusive from its paired intervals; the later gate is not represented as prespecified for run 1.
 
-The original notebook's automated `KEEP` branch checks positivity of the main and shuffle lower bounds, not whether the main lower bound exceeds +0.01. The portable script preserves those numeric rules but clarifies the wording. For the supplied results, both experiments remain inconclusive.
+The gate is a study-specific baseline-adequacy screen. It need not be a chance test to govern interpretation. A 0.5 reference line is illustrative; no calibrated null distribution or permutation chance test was supplied.
 
-The final notebook cell calls the baseline interpretable only if its lower interval bound exceeds 0.60. **0.60 is not a statistical chance benchmark for macro-F1.** Falling below that heuristic does not invalidate the paired stage comparisons; it calls for caution about baseline usefulness. Conversely, a modest F1 score should not be called “chance” without a defined null comparison. A [dummy classifier](https://scikit-learn.org/stable/modules/generated/sklearn.dummy.DummyClassifier.html) or an appropriately grouped permutation procedure would provide a clearer reference.
+The shared `interpretation.py` applies the gate before interval verdicts. For a run eligible for interpretation, a lower difference bound >0.01 supports a gain above the practical margin; a positive bound below that does not establish a practically meaningful gain; an interval inside ±0.01 supports practical equivalence. The published run 1 intervals are inconclusive. These outputs do not claim a universal decision for all stage-conditioned architectures.
 
-The latest notebook also draws a line at 0.5 labelled “Chance”. That line is an illustrative reference, not an empirically calibrated null distribution for this class balance and prediction rule. The stored notebook and supplied figures are preserved and annotated. The standalone script labels regenerated charts “Reference (0.5)” and replaces the final heuristic message with the distinction above.
+## Why the baseline is inadequate
 
-## Annotation and sampling limits
+Following the report's annotation interpretation, 3,281 images have no visible symptom (status N), 202 are symptomatic (Y), and 20 have E. E is kept separate; no new biological interpretation is assigned. Only 54.3% of images are leaves. The annotated box occupies a median of about 1.4% of the full frame.
 
-- The first annotation's status is `N` in 3,281 images, `Y` in 202 and `E` in 20. Their meanings should be confirmed against the provider's codebook; no healthy/symptomatic mapping is assumed here.
-- Full frames include leaf, fruit, stem and flower-cluster categories. The full-image model may therefore use context beyond leaf appearance.
-- The median first-annotation bounding-box area is about 1.4% of the frame in both classes. It is not necessarily the area of a symptomatic lesion.
-- Full-image and leaf-crop experiments use different image sets. A causal claim that cropping improves performance requires a matched-image comparison.
-- The leaf experiment was explored after the initial analysis and is treated as exploratory. A final evaluation on untouched data remains necessary for a confirmatory claim.
-- Adding more images of the same plants is not equivalent to adding more independent plants or farms.
+The labels describe a plant's treatment group over time, including frames before visible onset. They are not interchangeable with each image's symptom annotation. Stage and time since treatment are entangled.
 
-## Portable-script changes
+Run 2 changes both framing and inclusion of images, so the rise from 0.556 to 0.569 does not isolate cropping. Both runs use frozen features and one farm; conclusions do not extend to fine-tuned models, other cultivars or external farms.
 
-The modelling, seeds, transformations, prediction averaging and bootstrap calculations follow the notebook. The script additionally:
+## Reproduction and provenance
 
-- Accepts input, output, font and optional feature-cache paths as arguments.
-- Uses already-extracted data and does not write to the source tree.
-- Checks for missing group IDs, duplicate labelled filenames, unknown stages and train/test plant overlap.
-- Fingerprints new feature caches using ordered input metadata, image size/modification time, model identifier and crop settings.
-- Checks explicit legacy arrays for shape and finite values, and checks full-image row order against `data.csv` when available. Legacy crop arrays have no original row manifest, so their identity cannot be independently proven from their shape.
-- Exports per-stage differences and out-of-fold probability arrays, as well as the original result tables.
-- Clarifies the decision wording without changing the original numeric results.
+Use only the extracted validation subset for report reproduction. The portable script explicitly filters the farm and classes, rejects missing group IDs, duplicate labelled filenames, mixed labels within a plant and unknown stages, and checks train/test plant separation. Input audit JSON files compare aggregate counts with the report; matching counts do not prove source-split identity.
 
-The notebook retains its original extraction and row-count-only feature-cache logic. Run the script for the additional safeguards. Fingerprints are cache-consistency checks, not cryptographic verification of every image's contents or a guarantee across software versions.
+New feature caches have ordered metadata/file-state fingerprints. Existing feature arrays require exact row alignment; full-image data.csv is checked when supplied. Legacy crop caches have no independent manifest. The notebook retains its historical row-count cache checks; prefer the script for safer fresh extraction.
+
+All notebook code outputs were cleared in this revision. Reported results remain in the aggregate CSVs; the original executed notebook and figures remain available in Git history. No feature extraction, full-data cross-validation or bootstrap was rerun during the report-alignment update. See VERIFICATION.md for actual checks.
+
+## Follow-up
+
+The report proposes a post-onset subset (about 15 plants per class with recorded onset), fine-tuning on leaf crops when GPU resources return, and repeating the same ablation if the baseline passes. Later frames still require symptom checks. The onset script mentioned in the report was not included in the source repository, so this revision does not claim an implemented or executed onset experiment.

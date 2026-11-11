@@ -1,9 +1,9 @@
-experiment,comparison,delta,ci_lo,ci_hi,verdict,ci_level
-full_image,stage_additive vs no_stage,-0.0007822710611862,-0.0166287302558765,0.0155136874462821,INCONCLUSIVE (CI too wide),0.975
-full_image,stage_interaction vs no_stage,-0.0021733720895618,-0.0478537636053278,0.0433952190180695,INCONCLUSIVE (CI too wide),0.975
-full_image,stage_additive vs stage_additive_shuffled,-0.0016709573271197,-0.0193722196941554,0.013574733858089,INCONCLUSIVE (CI too wide),0.95
-full_image,stage_interaction vs stage_interaction_shuffled,0.0208441546682985,-0.0182009131048168,0.0573673018963947,INCONCLUSIVE (CI too wide),0.95
-leaf_crop,stage_additive vs no_stage,0.000704103144977,-0.0204513291831724,0.0223326143954507,INCONCLUSIVE (CI too wide),0.975
-leaf_crop,stage_interaction vs no_stage,0.003908808483912,-0.0351703841363438,0.04395855198649,INCONCLUSIVE (CI too wide),0.975
-leaf_crop,stage_additive vs stage_additive_shuffled,-0.0021633292703032,-0.0205358736825922,0.017000185088306,INCONCLUSIVE (CI too wide),0.95
-leaf_crop,stage_interaction vs stage_interaction_shuffled,0.0170257511903459,-0.0220336294109977,0.0569794627382953,INCONCLUSIVE (CI too wide),0.95
+experiment,comparison,delta,ci_lo,ci_hi,verdict,ci_level,interpretation
+full_image,stage_additive vs no_stage,-0.0007822710611862,-0.0166287302558765,0.0155136874462821,INCONCLUSIVE (CI too wide),0.975,interpreted
+full_image,stage_interaction vs no_stage,-0.0021733720895618,-0.0478537636053278,0.0433952190180695,INCONCLUSIVE (CI too wide),0.975,interpreted
+full_image,stage_additive vs stage_additive_shuffled,-0.0016709573271197,-0.0193722196941554,0.013574733858089,INCONCLUSIVE (CI too wide),0.95,interpreted
+full_image,stage_interaction vs stage_interaction_shuffled,0.0208441546682985,-0.0182009131048168,0.0573673018963947,INCONCLUSIVE (CI too wide),0.95,interpreted
+leaf_crop,stage_additive vs no_stage,0.000704103144977,-0.0204513291831724,0.0223326143954507,NOT INTERPRETED (baseline gate failed),0.975,not_interpreted
+leaf_crop,stage_interaction vs no_stage,0.003908808483912,-0.0351703841363438,0.04395855198649,NOT INTERPRETED (baseline gate failed),0.975,not_interpreted
+leaf_crop,stage_additive vs stage_additive_shuffled,-0.0021633292703032,-0.0205358736825922,0.017000185088306,NOT INTERPRETED (baseline gate failed),0.95,not_interpreted
+leaf_crop,stage_interaction vs stage_interaction_shuffled,0.0170257511903459,-0.0220336294109977,0.0569794627382953,NOT INTERPRETED (baseline gate failed),0.95,not_interpreted

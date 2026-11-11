@@ -1,0 +1,3 @@
+true_class,predicted_tipburn,predicted_yellowing,recall,provenance
+tipburn,636,428,0.5977443609022557,"Report Table 6; transcribed, not rerun"
+yellowing,384,454,0.5417661097852029,"Report Table 6; transcribed, not rerun"

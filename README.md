@@ -1,160 +1,195 @@
-# Does Growth Stage Help Strawberry Condition Classification?
+# Growth stage for strawberry nutrient-deficiency classification
 
-A Python ablation study testing whether growth-stage information improves classification of **leaf tipburn (`잎끝마름`)** and **yellowing (`황화`)** labels in Seolhyang strawberry images. The study compares image-only, stage-only, additive-stage and stage-interaction models using held-out plants.
+Does knowing a strawberry plant's growth stage help distinguish **tip burn (잎끝마름)** from **yellowing (황화)**?
 
-**Main finding:** neither the full-image experiment nor the leaf-crop experiment establishes a meaningful improvement from growth-stage conditioning. The estimated overall changes are small, and the paired uncertainty intervals include both benefit and harm. This is an inconclusive result, not proof that growth stage is irrelevant.
+**The stage question remains open.** On held-out plants, the leaf-crop image-only baseline reached **0.569 macro-F1 (95% CI 0.523–0.609)**. Its lower confidence bound did not exceed **0.60**, the interpretation rule set before run 2. Run 2's stage comparisons are therefore **reported but not interpreted**. These results support neither keeping nor dropping stage conditioning.
 
-## Ablation figures
+This repository accompanies **_Growth stage for Strawberry Nutrient Deficiency_**, the report supplied on **11 November 2026**. The reported results are retained; the documentation and executable decision logic now follow the report's two-run sequence and decision rules. This update is not a new training run.
 
-### Leaf crops: performance by model input — 1,902 images
+![Image-only baselines and the run 2 interpretation threshold](figures/baseline_gate.svg)
 
-![Leaf-crop macro-F1 by model input, with plant-bootstrap confidence intervals and shuffled-stage controls](figures/leaf_crop_by_input.png)
+## Why test growth stage?
 
-[Open the full-size input comparison](figures/leaf_crop_by_input.png)
+The motivation is Darlan et al. (2025), [“StrawBerry for AI-based growth stage classification and precision nutrient management in strawberry cultivation”](https://doi.org/10.1038/s41598-025-97168-z). Stage-specific nutrient management motivates the question, but does not itself prove that stage improves a deficiency classifier.
 
-Filled blue points show model inputs; open grey points show the same stage models evaluated with shuffled test-stage inputs. Error bars are 95% intervals obtained by resampling plants. Macro-F1 averages the F1 scores of the two classes; it is not classification accuracy.
+Two possible effects are tested:
 
-**Reading the reference line:** the supplied figure labels 0.5 as “Chance”. It should be treated as a visual reference, not a calibrated chance benchmark for this macro-F1 experiment. The portable script labels regenerated charts “Reference (0.5)”; the original figure and notebook output are preserved.
-
-### Leaf crops: where does growth stage help?
-
-![Change in leaf-crop macro-F1 from adding growth stage, with image counts and intervals for each growth stage](figures/leaf_crop_by_stage.png)
-
-[Open the full-size stage comparison](figures/leaf_crop_by_stage.png)
-
-Points show changes relative to the image-only model within each stage. The grey band marks **±0.01 macro-F1**, the notebook's chosen practical-difference margin. Each row lists image counts, not independent-plant counts. Stage-specific intervals are exploratory and are not adjusted for multiple comparisons.
-
-### Full-image comparison — 3,503 images
-
-![Full-image ablation: macro-F1 by model and stage-specific changes relative to the image-only model](figures/full_image_ablation.png)
-
-[Open the full-size full-image figure](figures/full_image_ablation.png)
-
-This earlier experiment includes multiple plant parts. The left panel shows overall scores and the right panel shows stage-specific changes.
-
-## Summary
-
-The notebook uses a pretrained ConvNeXt-Tiny model to extract image features, reduces them to 64 principal components inside each training fold, and fits logistic-regression classifiers. Five repeats of five-fold cross-validation keep photographs of the same plant in the same fold. The final predictions average each image's held-out probabilities across repeats.
-
-There are **55 plant groups from one farm**: 33 with the tipburn label and 22 with the yellowing label. The full-image and leaf-crop experiments both contain these plant groups, but different images and different stage-level sample counts. Neither experiment is an evaluation on a new farm.
-
-## What can be found from the results?
-
-### Overall performance
-
-| Model / evaluation | Full images: macro-F1 (95% CI) | Leaf crops: macro-F1 (95% CI) |
+| Hypothesis | Model input | Question |
 | --- | --- | --- |
-| Stage only | 0.501 (0.446–0.551) | 0.490 (0.410–0.561) |
-| Image only — `no_stage` | 0.556 (0.477–0.623) | 0.569 (0.523–0.609) |
-| Image + additive stage | 0.555 (0.478–0.622) | 0.570 (0.521–0.609) |
-| Image + stage interactions | 0.554 (0.481–0.614) | 0.573 (0.520–0.615) |
-| Additive model, test stage shuffled | 0.557 (0.481–0.620) | 0.572 (0.526–0.610) |
-| Interaction model, test stage shuffled | 0.533 (0.465–0.593) | 0.556 (0.516–0.588) |
+| Prevalence shift | Image features + one-hot stage | Does stage help because class frequencies differ across stages? |
+| Expression shift | Image features + stage + their interactions | Does the visual distinction between the two labels change with stage? |
 
-These values come from the original full-precision CSV exports and agree with the notebook's rounded tables. The shuffled rows evaluate the already-fitted models after scrambling stage inputs in the test fold; they are not separately trained models.
+Neither label is confined to one stage in this sample. Stage-only performance in run 1 was **0.501 (0.446–0.551)**: no useful stage-only class signal was demonstrated at this farm. This is a sample-specific finding, not a biological claim that nutrient stress is independent of growth stage.
 
-### Does adding stage improve the image-only model?
+## Data and the reason for restricting the task
 
-| Experiment | Comparison with `no_stage` | Macro-F1 change | Paired 97.5% CI |
-| --- | --- | ---: | --- |
-| Full images | Additive stage | −0.0008 | −0.0166 to +0.0155 |
-| Full images | Stage interactions | −0.0022 | −0.0479 to +0.0434 |
-| Leaf crops | Additive stage | +0.0007 | −0.0205 to +0.0223 |
-| Leaf crops | Stage interactions | +0.0039 | −0.0352 to +0.0440 |
+The report audits **AI Hub dataset 305**, strawberry cultivar **Seolhyang**. Its open training and validation release contains **172,037 labelled images, five classes and 12 farms**. Farm and class are strongly confounded: tip burn and yellowing occur only at **AI22_003**, while blight and wilt occur at three other farms without healthy plants. A five-class classifier could therefore learn farm differences.
 
-- **Neither stage approach shows a clear overall gain.** Every main interval crosses zero. Every interval also extends beyond both −0.01 and +0.01, so these results do not establish practical equivalence.
-- **The largest point-estimate gain is still small:** +0.0039 macro-F1 for leaf-crop stage interactions, below the chosen +0.01 practical margin. Its interval remains wide enough to allow a meaningful gain or loss.
-- **Shuffling stage gives suggestive but uncertain interaction effects.** Correct stage inputs outperform shuffled inputs by +0.0208 for full images and +0.0170 for leaf crops, but their 95% paired intervals are −0.0182 to +0.0574 and −0.0220 to +0.0570. This does not establish reliable reliance on useful stage information.
-- **The stage-specific plot does not identify a consistently beneficial stage.** Estimates vary across stages and experiments. Those subgroup comparisons should guide further investigation rather than support a firm stage-specific claim.
+The ablation uses **only tip burn versus yellowing at AI22_003**, with **55 plants: 33 tip burn and 22 yellowing**. The report describes these as nutrient-treatment groups. They are not tissue-confirmed nutrient diagnoses or per-frame guarantees of visible symptoms.
 
-In the leaf-crop figure, the largest positive interaction estimate occurs at flowering (**+0.0667**), but its 95% interval is **−0.0963 to +0.2420**. That subgroup contains only **60 images from 20 plants**, so the estimate needs particular caution. Fruit enlargement has a negative interaction estimate (**−0.0697**, interval **−0.1485 to +0.0022**). All leaf-crop stage-specific intervals cross zero. In the full-image experiment, the additive model's budding-stage interval is below zero (−0.0400 to −0.0045); that unadjusted exploratory result does not establish a general stage-specific effect.
+Because the lab server was unavailable, both runs used the **validation split only** (approximately 6 GB). This is the source split's name: the analysis itself uses plant-grouped cross-validation, not an untouched external validation set. The split already covers all 55 plants; adding training-split photos would add images, not new plants.
 
-Download the [overall comparison](results/overall_comparison.csv), [paired comparisons with interval levels](results/paired_comparisons.csv), [leaf-crop stage results](results/leaf_crop/stage_deltas.csv), and [image/plant coverage by stage](results/stage_coverage.csv).
+| Sample | Tip burn images | Yellowing images | Total images | Plants |
+| --- | ---: | ---: | ---: | ---: |
+| Run 1 — whole images | 1,989 | 1,514 | 3,503 | 55 |
+| Run 2 — annotated leaf crops | 1,064 | 838 | 1,902 | 55 |
 
-The two main comparisons within each experiment use **97.5% paired intervals**, reflecting the notebook's adjustment for two main comparisons. Overall model intervals, shuffle comparisons and stage-specific intervals use **95%**. Read the paired difference intervals to assess improvement; overlapping model-level intervals alone are not the test.
+Of 3,540 source labels, 37 were excluded for a blank growth stage or missing image. Each plant was photographed at 2–5 stages.
 
-### What does cropping tell us?
+| Growth stage | Run 1: tip burn plants | Run 1: yellowing plants | Run 2: tip burn plants | Run 2: yellowing plants |
+| --- | ---: | ---: | ---: | ---: |
+| Transplanting · 정식기 | 18 | 13 | 18 | 13 |
+| Flower-bud emergence · 출뢰기 | 28 | 16 | 28 | 16 |
+| Flowering · 개화기 | 14 | 10 | 12 | 8 |
+| Fruit enlargement · 과실비대기 | 27 | 22 | 24 | 19 |
+| Harvest · 수확기 | 28 | 19 | 28 | 17 |
 
-The image-only score is 0.556 in the full-image experiment and 0.569 in the leaf-crop experiment. However, the latter also selects a smaller, leaf-only sample. This comparison changes both image framing and the evaluated image set, so it does not isolate the effect of cropping. A fair follow-up would compare full frames and crops of the same 1,902 images with the same plant folds.
+Plants appear in multiple rows; stage counts must not be added to estimate independent sample size. See [stage coverage](results/stage_coverage.csv). The full-release counts are transcribed separately in [the dataset audit](results/report_dataset_audit.csv).
 
-## What are the implications?
+## Method
 
-1. **Keep an image-only model as the reference for further experiments.** The current evidence does not justify claiming that stage conditioning improves classification. It also does not justify permanently discarding stage information.
-2. **Check whether the labels match the intended visual task.** The first annotation is status `N` for 3,281 of 3,503 images (93.7%), `Y` for 202 and `E` for 20. The class label is therefore not interchangeable with the annotation-status field. Confirm the provider's definitions before treating every image as an example of a visible symptom.
-3. **Localise the relevant visual information and test that change fairly.** In the full-image data, the median first-annotation box occupies about 1.4% of the frame in each class. The notebook's crop experiment explores this issue, but a matched-image comparison is needed to attribute an effect to cropping.
-4. **Seek more independent plants and farms.** Thousands of photos do not provide thousands of independent plants. Additional plants, verified annotations and external-farm evaluation would make the uncertainty and generalisation claims more informative.
-5. **Use an explicit baseline comparison.** The notebook's final `0.60` cutoff is a heuristic, not a statistical chance level for macro-F1. Evaluate dummy classifiers or a suitable plant-level label-permutation procedure under the same grouped validation design before making a claim about chance performance.
+All arms use the same images, folds and classifier within each run.
 
-## Data and model design
-
-| Item | Configuration |
+| Component | Setting |
 | --- | --- |
-| Source labels read | 3,540 |
-| Usable full images | 3,503: 1,989 tipburn, 1,514 yellowing |
-| Leaf images with crop metadata | 1,902 |
-| Independent grouping unit | Farm ID + plant ID; 55 groups |
-| Farms represented | One |
-| Growth stages represented | Transplanting, budding, flowering, fruit enlargement and harvest |
-| Feature extractor | `convnext_tiny.fb_in22k`, frozen, 768 features per image |
-| Fold-specific preprocessing | Standardisation → 64-component PCA → standardisation |
-| Classifier | Logistic regression, `C=0.5`, balanced class weights, 5,000 maximum iterations |
-| Validation | 5 repeats × 5 stratified, plant-grouped folds |
-| Uncertainty | 2,000 paired plant-bootstrap resamples of fixed held-out predictions |
+| Image features | Frozen `convnext_tiny.fb_in22k`; ImageNet-22k weights; 768 dimensions |
+| Fold-specific preprocessing | Standardisation → PCA to 64 dimensions → standardisation; fitted on training plants only |
+| Classifier | Logistic regression; `C=0.5`, balanced class weights, `max_iter=5000` |
+| Validation | 5-fold `StratifiedGroupKFold`, repeated 5 times; plant = farm ID + plant ID |
+| Final prediction | Average each image's held-out probabilities across repeats, then threshold at 0.5 |
+| Metric | Image-level macro-F1 across the two classes |
+| Uncertainty | 2,000 paired bootstrap resamples of plants, keeping predictions fixed |
+| Main comparisons | 97.5% intervals: Bonferroni adjustment for two comparisons per run |
+| Other intervals | 95%; stage-specific results are exploratory |
+| Hardware | CPU |
 
-The class labels describe dataset categories; this repository does not establish their biological cause. The feature extractor is pretrained on ImageNet-22k, as described in the [official model card](https://huggingface.co/timm/convnext_tiny.fb_in22k).
-
-## Repository files
-
-| File or folder | Purpose |
+| Arm | Inputs |
 | --- | --- |
-| [`ablation_test.py`](ablation_test.py) | Portable script for both experiments and result exports. |
-| [`ablation_test.ipynb`](ablation_test.ipynb) | Supplied notebook with stored outputs, portable input path and interpretation notes. |
-| [`figures/`](figures/) | The latest two leaf-crop charts, the original full-image figure and the notebook's crop examples. |
-| [`results/full_image/`](results/full_image/) | Full-image overall scores, paired differences and diagnostics. |
-| [`results/leaf_crop/`](results/leaf_crop/) | Leaf-crop overall scores and paired differences. |
-| [`docs/METHODS.md`](docs/METHODS.md) | Model arms, confidence intervals, caveats and reproduction details. |
-| [`docs/VERIFICATION.md`](docs/VERIFICATION.md) | What was checked and which steps were rerun. |
-| [`requirements.txt`](requirements.txt) | Core analysis dependencies. |
-| [`requirements-features.txt`](requirements-features.txt) | Additional dependencies for fresh image-feature extraction. |
+| Stage only | One-hot growth stage |
+| Image only | Image features |
+| Image + stage | Image features and stage |
+| Image × stage | Image features, stage and their interactions |
+| Shuffled controls | The fitted additive/interaction models with stage shuffled at test time |
+
+**Decision-rule chronology matters.**
+
+1. **Before run 1:** a gain smaller than **0.01 macro-F1** is not practically meaningful.
+2. **After run 1, before run 2:** interpret stage comparisons only if the image-only baseline's **95% lower confidence bound is strictly above 0.60**.
+
+The second rule is a study-specific adequacy screen, not a statistical chance test. It is binding for run 2 even though the comparison numbers can still be calculated. It was not prespecified for run 1. The figures use 0.5 only as a visual reference.
+
+## Run 1 — whole images
+
+Image only scored **0.556 (0.477–0.623)**. Stage only scored **0.501 (0.446–0.551)**. All arms were between about 0.50 and 0.56. The stage comparisons were inconclusive.
+
+| Paired comparison | Δ macro-F1 | CI | Level |
+| --- | ---: | --- | ---: |
+| Image + stage − image only | −0.001 | −0.017 to +0.016 | 97.5% |
+| Image × stage − image only | −0.002 | −0.048 to +0.043 | 97.5% |
+| Image + stage − shuffled control | −0.002 | −0.019 to +0.014 | 95% |
+| Image × stage − shuffled control | +0.021 | −0.018 to +0.057 | 95% |
+
+The weak visual baseline prompted a label/region audit and the additional baseline rule for run 2.
+
+## Why is the visual baseline weak?
+
+![Annotation status and plant parts in run 1](figures/annotation_audit.svg)
+
+- **3,281/3,503 images (93.7%)** are annotated as showing no visible symptom; **202 (5.8%)** as symptomatic. The remaining 20 have status `E` and are shown separately.
+- The report's symptomatic subset scored **0.534 macro-F1 (n=202)** versus **0.558** on the remaining images. This subset is small.
+- Only **1,902 images (54.3%)** show leaves, although tip burn and yellowing are leaf symptoms.
+- The annotated box occupies a median of approximately **1.4%** of the full frame (IQR approximately **0.6–3.0%**), making relevant detail small at model input size.
+- These are per-plant time series. A plant's treatment-group label can precede visible symptoms. Growth stage and time since treatment therefore vary together.
+
+The report further records visible symptoms in only approximately 3–10% of images at each stage, without a steady increase towards harvest. This is evidence of a mismatch between treatment-group labels and a per-image visual classification task.
+
+## Run 2 — leaf crops
+
+Run 2 retains leaf images only and uses a square crop centred on the first annotated box, with side length **1.5 × the longer box dimension** (`pad=0.5`). This is the implementation of the report's “50% margin”: it is not 50% extra on each side. Features, classifier and validation settings are otherwise unchanged.
+
+| Model / evaluation | Macro-F1 | 95% CI |
+| --- | ---: | --- |
+| Stage only | 0.490 | 0.410–0.561 |
+| Image only | **0.569** | **0.523–0.609** |
+| Image + stage | 0.570 | 0.521–0.609 |
+| Image × stage | 0.573 | 0.520–0.615 |
+| Image + shuffled stage | 0.572 | 0.526–0.610 |
+| Image × shuffled stage | 0.556 | 0.516–0.588 |
+
+**All run 2 stage comparisons are reported for completeness and are not interpreted**, because **0.523 ≤ 0.60**. Neither the small positive point estimates nor the shuffled controls override this rule.
+
+The image-only confusion matrix from report Table 6 is:
+
+| True class | Predicted tip burn | Predicted yellowing | Recall |
+| --- | ---: | ---: | ---: |
+| Tip burn | 636 | 428 | 0.598 |
+| Yellowing | 384 | 454 | 0.542 |
+
+The baseline rises from 0.556 to 0.569 across runs, but run 2 changes both framing and the image subset. This is not an isolated estimate of the effect of cropping.
+
+See [complete paired results](docs/RESULTS.md), [full-precision scores](results/overall_comparison.csv), and [interpretation status](results/interpretation.json).
+
+## What follows from this?
+
+**There is no basis here for keeping or dropping growth-stage conditioning.** First establish an adequate visual baseline on unseen plants; then ask whether stage adds value.
+
+The report's next steps are:
+
+1. Evaluate a post-onset subset, from each plant's first recorded symptomatic image onwards, provided approximately **15 plants per class** have a recorded onset. Verify symptoms in the retained frames: being after onset does not guarantee every photographed organ is symptomatic.
+2. Fine-tune the image model on leaf crops when the lab server is available.
+3. If the image-only baseline passes, rerun the same stage ablation and apply the two decision rules.
+
+These are follow-up experiments, not completed results. The report mentions an onset-filtering script, but that implementation was not present in the supplied repository and has not been reconstructed from an assumed date schema.
 
 ## Run locally
 
-Use Python 3.13, the version recorded in the supplied notebook. Download this repository and open its folder, then create a virtual environment:
+Use the recorded environment in [requirements.txt](requirements.txt) and [requirements-features.txt](requirements-features.txt); the original notebook recorded Python 3.13.9.
 
 ```bash
 python -m venv .venv
-```
-
-Activate it with `.\.venv\Scripts\Activate.ps1` in Windows PowerShell, or `source .venv/bin/activate` on macOS/Linux.
-
-### Run from images
-
-Extract the source JSON-label and image archives into a local data directory. Use a clean directory containing the intended study subset; the script scans all extracted JSON files below it. It does not extract archives or modify the input dataset.
-
-```bash
 python -m pip install -r requirements-features.txt
-python -X utf8 ablation_test.py --data-dir "path/to/extracted/data" --out "outputs"
+python -X utf8 ablation_test.py --data-dir "path/to/extracted/validation/data" --out "outputs"
 ```
 
-Fresh feature extraction uses CPU and may take substantial time. The pretrained weights may download on the first run. New feature caches include an ordered-data fingerprint to avoid silently reusing them after input rows or crop metadata change.
+Activate the environment before installing: `.\.venv\Scripts\Activate.ps1` on Windows, or `source .venv/bin/activate` on macOS/Linux.
 
-### Run from existing feature arrays
+The script uses extracted labels/images. Supply only the intended validation subset; it filters to farm **AI22_003** and the two classes but cannot infer an archive's source split from arbitrary directory names. Do not mix training images into a report reproduction. New outputs include an input audit and a warning if counts differ from the report.
+
+For existing feature arrays:
 
 ```bash
 python -m pip install -r requirements.txt
-python -X utf8 ablation_test.py --data-dir "path/to/extracted/data" --feature-dir "path/to/feature_cache" --out "outputs"
+python -X utf8 ablation_test.py --data-dir "path/to/extracted/validation/data" --feature-dir "path/to/feature_cache" --out "outputs"
 ```
 
-The cache directory must contain `features.npy` for full images and `features_leafcrop.npy` for leaf crops in the **exact row order** of the reconstructed datasets. The script checks dimensions and, if available, compares the original `data.csv` order for full images. Legacy arrays alone cannot prove row identity. Do not reuse them with different image sets or ordering.
+The cache must contain `features.npy` (whole images) and `features_leafcrop.npy` (leaf crops), each in exactly the reconstructed row order. Legacy crop caches lack an independent row manifest; a matching shape cannot verify image identity. Fresh caches have ordered-input fingerprints. Original raw data, weights and feature arrays are not bundled.
 
-Both modes produce separate `outputs/full_image/` and `outputs/leaf_crop/` directories. Rerunning replaces files with the same names there. These local outputs include path-bearing working tables, feature caches and held-out probabilities; they are excluded from Git. The published `results/` folder contains selected aggregate tables.
+Both runs write scores and paired intervals. Run 2's exported verdicts and decision are gated by baseline adequacy. Results are written under `outputs/full_image/` and `outputs/leaf_crop/`; rerunning replaces same-named output files.
 
-Korean plot labels use Malgun Gothic by default. On another system, supply an installed Korean-capable font, for example `--font "Noto Sans CJK KR"`. For notebook use, install JupyterLab separately, set `ABLATION_DATA_DIR`, and run the cells in order. The notebook retains its original extraction and cache behaviour, described in its opening notes.
+Set `ABLATION_DATA_DIR` before using [the notebook](ablation_test.ipynb). Its updated code cells have cleared outputs to avoid presenting historical execution as execution of the revised code. Reusable result tables and original figures remain in the repository.
 
-## Limitations and reuse
+To regenerate the new report figures from published aggregates only:
 
-The bootstrap resamples plants while holding predictions fixed; it does not refit models in each resample. The scores are image-level macro-F1, not equally weighted per-plant scores. Results apply to this one-farm sample, frozen feature representation and classifier setup. No external test set, formal chance test or controlled matched-image crop comparison was supplied.
+```bash
+python render_report_figures.py
+python -m unittest discover -s tests -v
+```
 
-The local source is the validation subset of `305.시설작물개체이미지 및 시설작물질병이미지`. Raw labels, full-resolution source photographs, pretrained weights and feature arrays are not bundled. The crop-example montage is extracted from the supplied notebook. A provider download link, annotation codebook and data reuse terms were not supplied; no new code or data licence is assigned here.
+## Repository guide
 
-The README follows the figure-first, findings-and-reproduction style of [Weather Visualisation](https://github.com/isabelhendrick-sudo/Weather_visualisation).
+| Path | Purpose |
+| --- | --- |
+| [ablation_test.py](ablation_test.py) | CPU analysis for both runs |
+| [ablation_test.ipynb](ablation_test.ipynb) | Notebook workflow with report-aligned decision logic |
+| [interpretation.py](interpretation.py) | Shared baseline gate and practical-margin rules |
+| [docs/METHODS.md](docs/METHODS.md) | Exact methods, chronology and limitations |
+| [docs/RESULTS.md](docs/RESULTS.md) | Complete reported comparisons and supplementary figures |
+| [docs/VERIFICATION.md](docs/VERIFICATION.md) | Current checks, inherited verification and what was not rerun |
+| [results/](results/) | Published aggregates and explicit provenance |
+| [figures/](figures/) | Report-summary SVGs and retained original figures |
+
+## Limits
+
+One farm, one cultivar, 55 plants; validation-source images only; frozen features and a linear classifier; no external-farm test or tissue-confirmed nutrient labels. The plant bootstrap holds fitted predictions fixed and scores images rather than equally weighting plants. Stage is entangled with time since treatment. The 0.5 reference is not a calibrated chance distribution.
+
+AI Hub images are not redistributed here beyond the existing notebook crop montage. Dataset rights remain with the provider; this update does not assign a new code or data licence.
