@@ -8,9 +8,9 @@ This repository accompanies **_Growth stage for Strawberry Nutrient Deficiency_*
 
 ## Image-only baselines
 
-[![Image-only macro-F1 with 95% confidence intervals for whole images and leaf crops, alongside the 0.60 run 2 threshold](figures/baseline_gate.png)](figures/baseline_gate.svg)
+[![Image-only macro-F1 with 95% confidence intervals for whole images and leaf crops, alongside the 0.60 run 2 threshold](https://cdn.jsdelivr.net/gh/isabelhendrick-sudo/growth_stage_ablationtest@main/figures/baseline_gate.png)](https://cdn.jsdelivr.net/gh/isabelhendrick-sudo/growth_stage_ablationtest@main/figures/baseline_gate.svg)
 
-[View the full-size chart](figures/baseline_gate.svg) · [See the ablation plots and crop examples](docs/RESULTS.md#retained-supplementary-figures)
+[View the full-size chart](https://cdn.jsdelivr.net/gh/isabelhendrick-sudo/growth_stage_ablationtest@main/figures/baseline_gate.svg) · [See the ablation plots and crop examples](docs/RESULTS.md#retained-supplementary-figures)
 
 ## Why test growth stage?
 
@@ -97,9 +97,9 @@ The weak visual baseline prompted a label/region audit and the additional baseli
 
 ## Why is the visual baseline weak?
 
-[![Annotation audit of 3,503 images. 93.7% were marked as showing no visible symptom and 54.3% show leaves.](figures/annotation_audit.png)](figures/annotation_audit.svg)
+[![Annotation audit of 3,503 images. 93.7% were marked as showing no visible symptom and 54.3% show leaves.](https://cdn.jsdelivr.net/gh/isabelhendrick-sudo/growth_stage_ablationtest@main/figures/annotation_audit.png)](https://cdn.jsdelivr.net/gh/isabelhendrick-sudo/growth_stage_ablationtest@main/figures/annotation_audit.svg)
 
-[View the full-size chart](figures/annotation_audit.svg)
+[View the full-size chart](https://cdn.jsdelivr.net/gh/isabelhendrick-sudo/growth_stage_ablationtest@main/figures/annotation_audit.svg)
 
 - **3,281/3,503 images (93.7%)** are annotated as showing no visible symptom; **202 (5.8%)** as symptomatic. The remaining 20 have status `E` and are shown separately.
 - The report's symptomatic subset scored **0.534 macro-F1 (n=202)** versus **0.558** on the remaining images. This subset is small.
