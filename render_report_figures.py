@@ -42,9 +42,7 @@ def main():
              fontsize=9, color="#475569")
     fig.tight_layout(rect=(0, 0.10, 1, 1))
     fig.savefig(output / "baseline_gate.svg")
-    qa = ROOT / "_qa"
-    qa.mkdir(exist_ok=True)
-    fig.savefig(qa / "baseline_gate.png", dpi=150)
+    fig.savefig(output / "baseline_gate.png", dpi=144)
     plt.close(fig)
 
     status = {r["status"]: int(r["All"]) for r in read_csv("results/full_image/status_counts.csv")
@@ -74,7 +72,7 @@ def main():
              fontsize=9, color="#475569")
     fig.tight_layout(rect=(0, 0.10, 1, 1), w_pad=2)
     fig.savefig(output / "annotation_audit.svg")
-    fig.savefig(qa / "annotation_audit.png", dpi=150)
+    fig.savefig(output / "annotation_audit.png", dpi=144)
     plt.close(fig)
 
 

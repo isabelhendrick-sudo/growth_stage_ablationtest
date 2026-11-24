@@ -6,7 +6,11 @@ Does knowing a strawberry plant's growth stage help distinguish **tip burn (잎�
 
 This repository accompanies **_Growth stage for Strawberry Nutrient Deficiency_**, the report supplied on **11 November 2026**. The reported results are retained; the documentation and executable decision logic now follow the report's two-run sequence and decision rules. This update is not a new training run.
 
-![Image-only baselines and the run 2 interpretation threshold](figures/baseline_gate.svg)
+## Image-only baselines
+
+[![Image-only macro-F1 with 95% confidence intervals for whole images and leaf crops, alongside the 0.60 run 2 threshold](figures/baseline_gate.png)](figures/baseline_gate.svg)
+
+[View the full-size chart](figures/baseline_gate.svg) · [See the ablation plots and crop examples](docs/RESULTS.md#retained-supplementary-figures)
 
 ## Why test growth stage?
 
@@ -93,7 +97,9 @@ The weak visual baseline prompted a label/region audit and the additional baseli
 
 ## Why is the visual baseline weak?
 
-![Annotation status and plant parts in run 1](figures/annotation_audit.svg)
+[![Annotation audit of 3,503 images. 93.7% were marked as showing no visible symptom and 54.3% show leaves.](figures/annotation_audit.png)](figures/annotation_audit.svg)
+
+[View the full-size chart](figures/annotation_audit.svg)
 
 - **3,281/3,503 images (93.7%)** are annotated as showing no visible symptom; **202 (5.8%)** as symptomatic. The remaining 20 have status `E` and are shown separately.
 - The report's symptomatic subset scored **0.534 macro-F1 (n=202)** versus **0.558** on the remaining images. This subset is small.
@@ -186,7 +192,7 @@ python -m unittest discover -s tests -v
 | [docs/RESULTS.md](docs/RESULTS.md) | Complete reported comparisons and supplementary figures |
 | [docs/VERIFICATION.md](docs/VERIFICATION.md) | Current checks, inherited verification and what was not rerun |
 | [results/](results/) | Published aggregates and explicit provenance |
-| [figures/](figures/) | Report-summary SVGs and retained original figures |
+| [figures/](figures/) | Report-summary PNGs and SVGs, plus the original figures |
 
 ## Limits
 
